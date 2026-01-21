@@ -21,14 +21,9 @@ export default function galleryReducer(state, action) {
         images: action.payload || [],
       }
     case ACTIONS.ADD:
-      const newImage = {
-        id: Date.now(),
-        createdAt: Date.now(),
-        ...action.payload,
-      }
       return {
         ...state,
-        images: [newImage, ...state.images]
+        images: [action.payload, ...state.images]
       }
     case ACTIONS.UPDATE:
       return {
