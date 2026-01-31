@@ -1,15 +1,31 @@
-function GalleryModal({open,mode,formData,onChange,onSubmit,onClose,}) {
+import { useEffect } from 'react';
+
+function GalleryModal({ open, mode, formData, onChange, onSubmit, onClose, submitting }) {
     
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (!open) return;
+    
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose]);
+  
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center animate-fadeIn">
       <div
         className="absolute inset-0 bg-black/70"
         onClick={onClose}
       />
 
-      <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-md">
+      <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-md animate-slideIn">
         <h2 className="text-xl font-semibold text-white mb-4">
           {mode === "add" ? "Add Image" : "Edit Image"}
         </h2>
@@ -21,7 +37,8 @@ function GalleryModal({open,mode,formData,onChange,onSubmit,onClose,}) {
             value={formData.title}
             onChange={onChange}
             placeholder="Title"
-            className="w-full bg-gray-700 text-white px-4 py-2 rounded"
+            disabled={submitting}
+            className="w-full bg-gray-700 text-white px-4 py-2 rounded disabled:opacity-50"
           />
 
           <input
@@ -30,7 +47,8 @@ function GalleryModal({open,mode,formData,onChange,onSubmit,onClose,}) {
             value={formData.url}
             onChange={onChange}
             placeholder="Image URL"
-            className="w-full bg-gray-700 text-white px-4 py-2 rounded"
+            disabled={submitting}
+            className="w-full bg-gray-700 text-white px-4 py-2 rounded disabled:opacity-50"
           />
 
           <textarea
@@ -38,21 +56,31 @@ function GalleryModal({open,mode,formData,onChange,onSubmit,onClose,}) {
             value={formData.description}
             onChange={onChange}
             placeholder="Description"
-            className="w-full bg-gray-700 text-white px-4 py-2 rounded"
+            disabled={submitting}
+            className="w-full bg-gray-700 text-white px-4 py-2 rounded disabled:opacity-50"
           />
 
           <div className="flex gap-3 pt-3">
             <button
               type="submit"
-              className="flex-1 bg-sky-500 hover:bg-sky-600 text-white py-2 rounded"
+              disabled={submitting}
+              className="flex-1 bg-sky-500 hover:bg-sky-600 disabled:bg-sky-400 disabled:cursor-not-allowed text-white py-2 rounded flex items-center justify-center"
             >
-              {mode === "add" ? "ADD" : "UPDATE"}
+              {submitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  {mode === "add" ? "Adding..." : "Updating..."}
+                </>
+              ) : (
+                mode === "add" ? "ADD" : "UPDATE"
+              )}
             </button>
 
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded"
+              disabled={submitting}
+              className="flex-1 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white py-2 rounded"
             >
               Cancel
             </button>
