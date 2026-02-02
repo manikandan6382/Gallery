@@ -1,6 +1,39 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { gsap } from 'gsap';
 
 function GalleryModal({ open, mode, formData, onChange, onSubmit, onClose, submitting }) {
+    const modalRef = useRef(null);
+    const backdropRef = useRef(null);
+    
+  // Modal animations
+  useEffect(() => {
+    if (open) {
+      gsap.set(modalRef.current, { scale: 0.8, opacity: 0 });
+      gsap.set(backdropRef.current, { opacity: 0 });
+      
+      gsap.to(backdropRef.current, { opacity: 1, duration: 0.3 });
+      gsap.to(modalRef.current, { 
+        scale: 1, 
+        opacity: 1, 
+        duration: 0.4, 
+        ease: "back.out(1.7)" 
+      });
+    }
+  }, [open]);
+
+  const handleClose = () => {
+    gsap.to(modalRef.current, { 
+      scale: 0.8, 
+      opacity: 0, 
+      duration: 0.3,
+      ease: "power2.in"
+    });
+    gsap.to(backdropRef.current, { 
+      opacity: 0, 
+      duration: 0.3,
+      onComplete: onClose
+    });
+  };
     
   // Keyboard shortcuts
   useEffect(() => {
@@ -8,24 +41,24 @@ function GalleryModal({ open, mode, formData, onChange, onSubmit, onClose, submi
     
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        onClose();
+        handleClose();
       }
     };
     
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose]);
+  }, [open]);
   
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center animate-fadeIn">
+    <div ref={backdropRef} className="fixed inset-0 z-50 flex items-center justify-center">
       <div
         className="absolute inset-0 bg-black/70"
-        onClick={onClose}
+        onClick={handleClose}
       />
 
-      <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-md animate-slideIn">
+      <div ref={modalRef} className="relative bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-md">
         <h2 className="text-xl font-semibold text-white mb-4">
           {mode === "add" ? "Add Image" : "Edit Image"}
         </h2>
@@ -78,7 +111,7 @@ function GalleryModal({ open, mode, formData, onChange, onSubmit, onClose, submi
 
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={submitting}
               className="flex-1 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white py-2 rounded"
             >

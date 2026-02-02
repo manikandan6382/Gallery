@@ -1,15 +1,22 @@
 
-import { useState, useReducer, useEffect, useCallback, useMemo } from "react";
+import { useState, useReducer, useEffect, useCallback } from "react";
+import CategoryTabs from '../components/CategoryTabs';
 import GalleryGrid from '../components/gallery/GalleryGrid';
 import GalleryModal from '../components/gallery/GalleryModal';
+import SkeletonCard from '../components/SkeletonCard';
 import galleryReducer, { ACTIONS, initialState } from '../reducers/galleryReducer';
 import { fetchImages, uploadImage, deleteImage } from '../api/fakeGalleryApi';
 function GalleryPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
     const [message, setMessage] = useState({ text: '', type: '' });
+    const [activeCategory, setActiveCategory] = useState('anime');
+    const [categories] = useState(['anime', 'music', 'city']);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
     const [formData, setFormData] = useState({
         title: '',
         url: '',
@@ -49,20 +56,76 @@ function GalleryPage() {
         return true;
     };
 
-    // initial state
+    // Load initial images
     useEffect(() => {
-        async function loadImages() {
+        async function loadInitialImages() {
             try {
-                const data = await fetchImages();
+                console.log('Loading initial 9 images for:', activeCategory);
+                const data = await fetchImages(activeCategory, 1, 9);
+                console.log('Received data:', data.length, 'images');
                 dispatch({ type: ACTIONS.INIT, payload: data });
+                setHasMore(data.length === 9); // Has more if we got exactly 9
+                setCurrentPage(1);
             } catch (err) {
                 showMessage('Failed to load images. Please refresh the page.', 'error');
             } finally {
                 setLoading(false);
             }
         }
-        loadImages();
-    }, [])
+        loadInitialImages();
+    }, [showMessage]);
+
+    // Load images when category changes
+    useEffect(() => {
+        if (loading) return; // Skip during initial load
+        
+        async function loadCategoryImages() {
+            try {
+                setLoading(true);
+                console.log('Loading 9 images for category:', activeCategory);
+                const data = await fetchImages(activeCategory, 1, 9);
+                console.log('Received data:', data.length, 'images');
+                dispatch({ type: ACTIONS.INIT, payload: data });
+                setHasMore(data.length === 9);
+                setCurrentPage(1);
+            } catch (err) {
+                showMessage(`Failed to load ${activeCategory} images.`, 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+        loadCategoryImages();
+    }, [activeCategory, showMessage]);
+    // Load more images for infinite scroll
+    const handleLoadMore = useCallback(async () => {
+        if (loadingMore || !hasMore) return;
+        
+        try {
+            setLoadingMore(true);
+            const nextPage = currentPage + 1;
+            console.log(`Loading more images: page ${nextPage} for ${activeCategory}`);
+            const newImages = await fetchImages(activeCategory, nextPage, 9);
+            console.log('Received new images:', newImages.length);
+            
+            if (newImages.length > 0) {
+                dispatch({ type: ACTIONS.INIT, payload: [...images, ...newImages] });
+                setCurrentPage(nextPage);
+                setHasMore(newImages.length === 9); // Has more if we got exactly 9
+            } else {
+                setHasMore(false);
+            }
+        } catch (err) {
+            showMessage('Failed to load more images.', 'error');
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [activeCategory, currentPage, images, loadingMore, hasMore]);
+
+    // Category change handler
+    const handleCategoryChange = useCallback((category) => {
+        setActiveCategory(category);
+    }, []);
+
     // Memoized handlers to prevent unnecessary re-renders
     const handleChange = useCallback((e) => {
         const { name, value } = e.target;
@@ -88,29 +151,27 @@ function GalleryPage() {
     const handleCloseModal = useCallback(() => {
         setIsModalOpen(false);
     }, []);
+    // Sync form data with selected image
     useEffect(() => {
-        if (mode === 'edit') {
+        if (mode === 'edit' && selectedImage) {
             setFormData({
                 title: selectedImage.title,
                 url: selectedImage.url,
                 description: selectedImage.description || '',
-            })
+            });
         }
     }, [mode, selectedImage]);
 
-    // submit 
+    // Form submission
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // Validate form before submitting
-        if (!validateForm()) {
-            return;
-        }
+        if (!validateForm()) return;
         
         setSubmitting(true);
         try {
             if (mode === 'add') {
-                const newImage = await uploadImage('anime', formData);
+                const newImage = await uploadImage(activeCategory, formData);
                 dispatch({ type: ACTIONS.ADD, payload: newImage });
                 showMessage('Image added successfully!', 'success');
             } else {
@@ -128,8 +189,9 @@ function GalleryPage() {
         } finally {
             setSubmitting(false);
         }
-    }
+    };
 
+    // Delete handler
     const handleDelete = async (id) => {
         setDeletingId(id);
         try {
@@ -141,20 +203,44 @@ function GalleryPage() {
         } finally {
             setDeletingId(null);
         }
-    }
+    };
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6">
-                <p className="text-center text-gray-100 text-2xl mt-10 font-bold">
-                    Loading gallery...
-                </p>
+            <div className="max-h-screen h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6 overflow-auto">
+                <div className="max-w-7xl 2xl:max-w-8/10 mx-auto">
+                    <h1 className="text-4xl font-bold text-white mb-6">Gallery</h1>
+                    
+                    {/* Category Tabs Skeleton */}
+                    <div className="flex gap-2 mb-6">
+                        {[...Array(3)].map((_, i) => (
+                            <div key={i} className="h-12 w-20 bg-gray-700 rounded-lg animate-pulse"></div>
+                        ))}
+                    </div>
+                    
+                    {/* Skeleton Grid */}
+                    <div className="grid lg:grid-cols-3 2xl:grid-cols-4 md:grid-cols-3 sm:grid-cols-1 gap-6">
+                        {[...Array(9)].map((_, i) => (
+                            <SkeletonCard key={`initial-skeleton-${i}`} />
+                        ))}
+                    </div>
+                </div>
             </div>
         )
     }
+    
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6">
-            <div className="max-w-7xl mx-auto">
+        <div className="max-h-screen h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6 overflow-auto">
+            <div className="max-w-7xl 2xl:max-w-8/10 mx-auto">
                 <h1 className="text-4xl font-bold text-white mb-6">Gallery</h1>
+                
+                {/* Category Tabs */}
+                {!loading && (
+                    <CategoryTabs 
+                        categories={categories}
+                        activeCategory={activeCategory}
+                        onCategoryChange={handleCategoryChange}
+                    />
+                )}
                 
                 {/* Message Display */}
                 {message.text && (
@@ -170,16 +256,21 @@ function GalleryPage() {
                 <GalleryGrid
                     images={images}
                     onDelete={handleDelete}
-                    onEdit={openEditModal}error
+                    onEdit={openEditModal}
                     onAddClick={openAddModal}
                     deletingId={deletingId}
+                    onLoadMore={handleLoadMore}
+                    hasMore={hasMore}
+                    loading={loadingMore}
                 />
+                
                 <button
                     onClick={openAddModal}
                     className="mt-6 bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded"
                 >
                     Add Image
                 </button>
+                
                 <GalleryModal
                     open={isModalOpen}
                     mode={mode}
@@ -191,6 +282,6 @@ function GalleryPage() {
                 />
             </div>
         </div>
-    )
+    );
 }
 export default GalleryPage

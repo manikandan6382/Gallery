@@ -1,9 +1,11 @@
-import { useState, memo } from 'react';
+import { useState, memo, useRef } from 'react';
 import PropTypes from 'prop-types';
+import { gsap } from 'gsap';
 
 const GalleryCard = memo(function GalleryCard({ image, onEdit, onDelete, isDeleting }) {
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  const cardRef = useRef(null);
 
   const handleImageLoad = () => {
     setImageLoading(false);
@@ -14,8 +16,22 @@ const GalleryCard = memo(function GalleryCard({ image, onEdit, onDelete, isDelet
     setImageError(true);
   };
 
+  // Hover animations (lighter)
+  const handleMouseEnter = () => {
+    gsap.to(cardRef.current, { scale: 1.02, duration: 0.2, ease: "power1.out" });
+  };
+
+  const handleMouseLeave = () => {
+    gsap.to(cardRef.current, { scale: 1, duration: 0.2, ease: "power1.out" });
+  };
+
   return (
-    <div className="bg-gradient-to-br from-gray-800/70 to-gray-900/70 border border-gray-700 rounded-lg p-4 hover:shadow-xl hover:scale-105 transition-all duration-300 relative">
+    <div 
+      ref={cardRef}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className="bg-gradient-to-br from-gray-800/70 to-gray-900/70 border border-gray-700 rounded-lg p-4 hover:shadow-xl transition-shadow duration-300 relative"
+    >
       <div className="relative w-full h-48 rounded-lg border border-gray-700 overflow-hidden bg-gray-800">
         {imageLoading && (
           <div className="absolute inset-0 flex items-center justify-center">
