@@ -4,33 +4,56 @@ import { gsap } from 'gsap';
 function GalleryModal({ open, mode, formData, onChange, onSubmit, onClose, submitting }) {
     const modalRef = useRef(null);
     const backdropRef = useRef(null);
+    const contentRef = useRef(null);
     
-  // Modal animations
+  // Smooth modal animations
   useEffect(() => {
     if (open) {
-      gsap.set(modalRef.current, { scale: 0.8, opacity: 0 });
+      gsap.set(modalRef.current, { scale: 0.95, opacity: 0, y: 10 });
       gsap.set(backdropRef.current, { opacity: 0 });
       
-      gsap.to(backdropRef.current, { opacity: 1, duration: 0.3 });
+      gsap.to(backdropRef.current, { 
+        opacity: 1, 
+        duration: 0.25,
+        ease: "power2.out"
+      });
+      
       gsap.to(modalRef.current, { 
         scale: 1, 
         opacity: 1, 
-        duration: 0.4, 
-        ease: "back.out(1.7)" 
+        y: 0,
+        duration: 0.35, 
+        ease: "power2.out",
+        onComplete: () => {
+          // Animate content after modal is in place
+          if (contentRef.current) {
+            gsap.fromTo(contentRef.current.children,
+              { opacity: 0, y: 8 },
+              { 
+                opacity: 1, 
+                y: 0, 
+                duration: 0.25,
+                stagger: 0.04,
+                ease: "power2.out"
+              }
+            );
+          }
+        }
       });
     }
   }, [open]);
 
   const handleClose = () => {
     gsap.to(modalRef.current, { 
-      scale: 0.8, 
+      scale: 0.95, 
       opacity: 0, 
-      duration: 0.3,
+      y: 10,
+      duration: 0.25,
       ease: "power2.in"
     });
     gsap.to(backdropRef.current, { 
       opacity: 0, 
-      duration: 0.3,
+      duration: 0.2,
       onComplete: onClose
     });
   };
@@ -52,60 +75,85 @@ function GalleryModal({ open, mode, formData, onChange, onSubmit, onClose, submi
   if (!open) return null;
 
   return (
-    <div ref={backdropRef} className="fixed inset-0 z-50 flex items-center justify-center">
+    <div ref={backdropRef} className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-black/70"
+        className="github-modal-backdrop absolute inset-0"
         onClick={handleClose}
       />
 
-      <div ref={modalRef} className="relative bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-md">
-        <h2 className="text-xl font-semibold text-white mb-4">
-          {mode === "add" ? "Add Image" : "Edit Image"}
-        </h2>
+      <div 
+        ref={modalRef}
+        className="github-modal relative p-6 w-full max-w-md"
+      >
+        {/* Header */}
+        <div className="text-center mb-6" ref={contentRef}>
+          <h2 className="text-xl font-semibold text-github-primary mb-2">
+            {mode === "add" ? "Add New Image" : "Edit Image"}
+          </h2>
+          <div className="w-12 h-1 bg-gradient-to-r from-accent-purple to-accent-blue mx-auto rounded-full"></div>
+        </div>
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <input
-            type="text"
-            name="title"
-            value={formData.title}
-            onChange={onChange}
-            placeholder="Title"
-            disabled={submitting}
-            className="w-full bg-gray-700 text-white px-4 py-2 rounded disabled:opacity-50"
-          />
+        <form onSubmit={onSubmit} className="space-y-5" ref={contentRef}>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-github-primary">
+              Title
+            </label>
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={onChange}
+              placeholder="Enter image title"
+              disabled={submitting}
+              className="github-input"
+              required
+            />
+          </div>
 
-          <input
-            type="text"
-            name="url"
-            value={formData.url}
-            onChange={onChange}
-            placeholder="Image URL"
-            disabled={submitting}
-            className="w-full bg-gray-700 text-white px-4 py-2 rounded disabled:opacity-50"
-          />
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-github-primary">
+              Image URL
+            </label>
+            <input
+              type="url"
+              name="url"
+              value={formData.url}
+              onChange={onChange}
+              placeholder="https://example.com/image.jpg"
+              disabled={submitting}
+              className="github-input"
+              required
+            />
+          </div>
 
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={onChange}
-            placeholder="Description"
-            disabled={submitting}
-            className="w-full bg-gray-700 text-white px-4 py-2 rounded disabled:opacity-50"
-          />
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-github-primary">
+              Description
+            </label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={onChange}
+              placeholder="Enter image description (optional)"
+              disabled={submitting}
+              className="github-input resize-none"
+              rows={3}
+            />
+          </div>
 
-          <div className="flex gap-3 pt-3">
+          <div className="flex gap-3 pt-4" ref={contentRef}>
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 bg-sky-500 hover:bg-sky-600 disabled:bg-sky-400 disabled:cursor-not-allowed text-white py-2 rounded flex items-center justify-center"
+              className="github-btn flex-1 py-2.5 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  {mode === "add" ? "Adding..." : "Updating..."}
-                </>
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full loading-spin"></div>
+                  <span>{mode === "add" ? "Adding..." : "Updating..."}</span>
+                </div>
               ) : (
-                mode === "add" ? "ADD" : "UPDATE"
+                mode === "add" ? "Add Image" : "Update Image"
               )}
             </button>
 
@@ -113,12 +161,16 @@ function GalleryModal({ open, mode, formData, onChange, onSubmit, onClose, submi
               type="button"
               onClick={handleClose}
               disabled={submitting}
-              className="flex-1 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white py-2 rounded"
+              className="github-btn secondary flex-1 py-2.5 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
           </div>
         </form>
+
+        {/* Decorative elements */}
+        <div className="absolute top-3 right-3 w-2 h-2 bg-accent-purple rounded-full opacity-50"></div>
+        <div className="absolute bottom-3 left-3 w-2 h-2 bg-accent-blue rounded-full opacity-50"></div>
       </div>
     </div>
   );
